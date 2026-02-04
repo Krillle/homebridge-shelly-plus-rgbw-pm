@@ -66,26 +66,30 @@
     {
       "key": "devices",
       "type": "array",
-      "items": [
-        "devices[].name",
-        "devices[].host",
-        {
-          "type": "help",
-          "helpvalue": "Dimmer checkboxes apply only when that device is in light profile."
-        },
-        {
-          "type": "fieldset",
-          "title": "Light Mode Dimmers",
-          "expandable": true,
-          "expanded": false,
-          "items": [
-            "devices[].showDimmer1",
-            "devices[].showDimmer2",
-            "devices[].showDimmer3",
-            "devices[].showDimmer4"
-          ]
-        }
-      ]
+      "add": "Add Device",
+      "items": {
+        "type": "section",
+        "items": [
+          "devices[].name",
+          "devices[].host",
+          {
+            "type": "help",
+            "helpvalue": "Dimmer checkboxes apply only when that device is in light profile."
+          },
+          {
+            "type": "fieldset",
+            "title": "Light Mode Dimmers",
+            "expandable": true,
+            "expanded": false,
+            "items": [
+              "devices[].showDimmer1",
+              "devices[].showDimmer2",
+              "devices[].showDimmer3",
+              "devices[].showDimmer4"
+            ]
+          }
+        ]
+      }
     },
     {
       "type": "help",
