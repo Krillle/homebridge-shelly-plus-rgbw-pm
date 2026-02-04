@@ -34,27 +34,29 @@
             "host": {
               "title": "IP Address or mDNS Name",
               "type": "string",
-              "placeholder": "192.168.1.60 or shellyplusrgbwpm.local"
+              "placeholder": "192.168.1.60 or shellyplusrgbwpm.local",
+              "description": "mDNS name is persistent in DHCP IP address environment. Find it for your device at http://<device ip-address>/shelly as value of \"id\". Add \".local\" to that ID to get the hostname."
             },
             "showDimmer1": {
               "title": "Show Dimmer 1",
               "type": "boolean",
-              "default": true
+              "default": true,
             },
             "showDimmer2": {
               "title": "Show Dimmer 2",
               "type": "boolean",
-              "default": true
+              "default": true,
             },
             "showDimmer3": {
               "title": "Show Dimmer 3",
               "type": "boolean",
-              "default": true
+              "default": true,
             },
             "showDimmer4": {
               "title": "Show Dimmer 4",
               "type": "boolean",
-              "default": true
+              "default": true,
+              "description": "For Shelly Plus RGBW PM devices in light mode, select the dimmers you want to see as devices in Homebridge. If the device is in RGBW or RGB mode, these checkboxes are ignored."
             }
           }
         }
