@@ -19,20 +19,16 @@ class ShellyPlusRGBWPMPlatform {
     this.accessories = new Map();
     this.commandQueues = new Map();
 
-    this.profile = null;
-    this.deviceInfo = {};
     this.pollTimer = null;
     this.pollInFlight = null;
 
-    this.host = sanitizeHost(this.config.host);
-    this.displayName = normalizeName(this.config.name) || 'Shelly Plus RGBW PM';
+    this.platformName = normalizeName(this.config.name) || 'Shelly Plus RGBW PM';
+    this.devices = this.parseConfiguredDevices();
 
-    if (!this.host) {
-      this.log.error('Missing Shelly host. Set an IP address or mDNS name in Homebridge UI.');
+    if (!this.devices.size) {
+      this.log.error('No Shelly devices configured. Set "host" or add entries under "devices".');
       return;
     }
-
-    this.client = new ShellyRpcClient(this.host);
 
     this.api.on('didFinishLaunching', async () => {
       await this.initialize();
@@ -40,17 +36,72 @@ class ShellyPlusRGBWPMPlatform {
   }
 
   configureAccessory(accessory) {
+    accessory.context = accessory.context || {};
     this.accessories.set(accessory.UUID, accessory);
+  }
+
+  parseConfiguredDevices() {
+    const devices = new Map();
+    const configuredDevices = Array.isArray(this.config.devices)
+      ? this.config.devices
+      : [];
+
+    configuredDevices.forEach((deviceConfig, index) => {
+      this.addConfiguredDevice(devices, deviceConfig, {
+        fallbackName: `${this.platformName} ${index + 1}`,
+        label: `devices[${index}]`,
+      });
+    });
+
+    if (this.config.host) {
+      this.addConfiguredDevice(devices, this.config, {
+        fallbackName: this.platformName,
+        label: 'host',
+      });
+    }
+
+    return devices;
+  }
+
+  addConfiguredDevice(devices, config, options) {
+    const host = sanitizeHost(config ? config.host : '');
+
+    if (!host) {
+      if (options && options.label !== 'host') {
+        this.log.warn('Ignoring %s because host is missing.', options.label);
+      }
+
+      return;
+    }
+
+    if (devices.has(host)) {
+      this.log.warn('Duplicate Shelly host %s found in config. Ignoring duplicate entry.', host);
+      return;
+    }
+
+    const displayName = normalizeName(config.name) || options.fallbackName || host;
+    const showDimmers = [0, 1, 2, 3].map((channel) => this.isDimmerEnabled(config, channel));
+
+    devices.set(host, {
+      host,
+      displayName,
+      showDimmers,
+      client: new ShellyRpcClient(host),
+      profile: null,
+      deviceInfo: {},
+      descriptors: [],
+      discovered: false,
+    });
   }
 
   async initialize() {
     try {
       await this.refreshTopology();
-      this.startPolling();
     } catch (error) {
-      this.log.error('Initial Shelly discovery failed for %s: %s', this.host, error.message);
-      this.startPolling(10000);
+      this.log.error('Initial Shelly discovery failed: %s', error.message);
     }
+
+    this.startPolling();
   }
 
   startPolling(intervalMs = 5000) {
@@ -62,7 +113,7 @@ class ShellyPlusRGBWPMPlatform {
       try {
         await this.pollSerial();
       } catch (error) {
-        this.log.warn('Polling failed for %s: %s', this.host, error.message);
+        this.log.warn('Polling cycle failed: %s', error.message);
       }
     }, intervalMs);
 
@@ -72,16 +123,30 @@ class ShellyPlusRGBWPMPlatform {
   }
 
   async poll() {
-    const status = await this.client.getStatus();
-    const nextProfile = determineProfile(status, null);
+    const devices = Array.from(this.devices.values());
+    await Promise.all(devices.map((device) => this.pollDevice(device)));
+  }
 
-    if (nextProfile !== this.profile) {
-      this.log.info('Shelly profile changed from %s to %s. Rebuilding accessories.', this.profile || 'unknown', nextProfile);
-      await this.refreshTopology(status);
-      return;
+  async pollDevice(device) {
+    try {
+      const status = await device.client.getStatus();
+      const nextProfile = determineProfile(status, null);
+
+      if (nextProfile !== device.profile) {
+        this.log.info(
+          'Shelly %s profile changed from %s to %s. Rebuilding accessories.',
+          device.host,
+          device.profile || 'unknown',
+          nextProfile,
+        );
+        await this.refreshDeviceTopology(device, { cachedStatus: status });
+        return;
+      }
+
+      this.updateAccessoryStates(device.host, status);
+    } catch (error) {
+      this.log.warn('Polling failed for %s: %s', device.host, error.message);
     }
-
-    this.updateAccessoryStates(status);
   }
 
   async pollSerial() {
@@ -96,77 +161,188 @@ class ShellyPlusRGBWPMPlatform {
     return this.pollInFlight;
   }
 
-  async refreshTopology(cachedStatus) {
+  async refreshTopology() {
+    const statusesByHost = new Map();
+    const devices = Array.from(this.devices.values());
+
+    await Promise.all(devices.map(async (device) => {
+      try {
+        const status = await this.refreshDeviceTopology(device, { sync: false });
+        statusesByHost.set(device.host, status);
+      } catch (error) {
+        this.log.warn('Shelly discovery failed for %s: %s', device.host, error.message);
+      }
+    }));
+
+    this.syncAccessories(this.collectDiscoveredDescriptors());
+
+    for (const [host, status] of statusesByHost.entries()) {
+      this.updateAccessoryStates(host, status);
+    }
+
+    if (!statusesByHost.size) {
+      throw new Error('Could not discover any configured Shelly devices.');
+    }
+  }
+
+  async refreshDeviceTopology(device, options = {}) {
+    const { cachedStatus, sync = true } = options;
     const [status, deviceInfo] = await Promise.all([
-      cachedStatus ? Promise.resolve(cachedStatus) : this.client.getStatus(),
-      this.client.getDeviceInfo().catch((error) => {
-        this.log.warn('Shelly.GetDeviceInfo failed: %s', error.message);
+      cachedStatus ? Promise.resolve(cachedStatus) : device.client.getStatus(),
+      device.client.getDeviceInfo().catch((error) => {
+        this.log.warn('Shelly.GetDeviceInfo failed for %s: %s', device.host, error.message);
         return {};
       }),
     ]);
 
-    this.deviceInfo = deviceInfo || {};
-    this.profile = determineProfile(status, this.deviceInfo.profile);
+    device.deviceInfo = deviceInfo || {};
+    device.profile = determineProfile(status, device.deviceInfo.profile);
+    device.descriptors = this.buildAccessoryDescriptors(device);
+    device.discovered = true;
 
-    const descriptors = this.buildAccessoryDescriptors(this.profile);
-    this.syncAccessories(descriptors);
-    this.updateAccessoryStates(status);
+    if (sync) {
+      this.syncAccessories(this.collectDiscoveredDescriptors());
+      this.updateAccessoryStates(device.host, status);
+    }
+
+    return status;
   }
 
-  buildAccessoryDescriptors(profile) {
+  collectDiscoveredDescriptors() {
+    const descriptors = [];
+
+    for (const device of this.devices.values()) {
+      if (!device.discovered) {
+        continue;
+      }
+
+      descriptors.push(...device.descriptors);
+    }
+
+    return descriptors;
+  }
+
+  buildAccessoryDescriptors(device) {
+    const { host, profile, displayName, showDimmers } = device;
+
     if (profile === 'light') {
       const descriptors = [];
 
       for (let channel = 0; channel < 4; channel++) {
-        if (!this.isDimmerEnabled(channel)) {
+        if (!showDimmers[channel]) {
           continue;
         }
 
-        const name = `${this.displayName} Dimmer ${channel + 1}`;
+        const name = `${displayName} Dimmer ${channel + 1}`;
         descriptors.push({
+          host,
           kind: 'light',
           channel,
           name,
-          uuid: this.api.hap.uuid.generate(`${this.host}|light|${channel}`),
+          uuid: this.api.hap.uuid.generate(`${host}|light|${channel}`),
         });
       }
 
       if (!descriptors.length) {
-        this.log.warn('Shelly is in light profile but all dimmer checkboxes are disabled. No accessories will be exposed.');
+        this.log.warn('Shelly %s is in light profile but all dimmer checkboxes are disabled.', host);
       }
 
       return descriptors;
     }
 
     return [{
+      host,
       kind: profile,
       channel: 0,
-      name: this.displayName,
-      uuid: this.api.hap.uuid.generate(`${this.host}|${profile}|0`),
+      name: displayName,
+      uuid: this.api.hap.uuid.generate(`${host}|${profile}|0`),
     }];
   }
 
-  isDimmerEnabled(channel) {
+  isDimmerEnabled(config, channel) {
     const key = `showDimmer${channel + 1}`;
-    return this.config[key] !== false;
+    return !config || config[key] !== false;
+  }
+
+  inferHostFromUuid(uuid) {
+    for (const host of this.devices.keys()) {
+      for (let channel = 0; channel < 4; channel++) {
+        if (uuid === this.api.hap.uuid.generate(`${host}|light|${channel}`)) {
+          return host;
+        }
+      }
+
+      if (uuid === this.api.hap.uuid.generate(`${host}|rgb|0`)) {
+        return host;
+      }
+
+      if (uuid === this.api.hap.uuid.generate(`${host}|rgbw|0`)) {
+        return host;
+      }
+    }
+
+    return '';
+  }
+
+  getAccessoryHost(accessory) {
+    const contextHost = sanitizeHost(accessory.context ? accessory.context.host : '');
+
+    if (contextHost) {
+      return contextHost;
+    }
+
+    const inferredHost = this.inferHostFromUuid(accessory.UUID);
+
+    if (inferredHost) {
+      accessory.context.host = inferredHost;
+      return inferredHost;
+    }
+
+    return '';
+  }
+
+  getAccessoryDevice(accessory) {
+    const host = this.getAccessoryHost(accessory);
+
+    if (!host) {
+      throw new Error('Accessory host is missing from cached context.');
+    }
+
+    const device = this.devices.get(host);
+
+    if (!device) {
+      throw new Error(`Shelly host ${host} is not configured.`);
+    }
+
+    return device;
   }
 
   syncAccessories(descriptors) {
     const wanted = new Map(descriptors.map((descriptor) => [descriptor.uuid, descriptor]));
 
     for (const [uuid, accessory] of this.accessories.entries()) {
-      if (!wanted.has(uuid)) {
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-        this.accessories.delete(uuid);
-        this.commandQueues.delete(uuid);
-        this.log.info('Removed accessory: %s', accessory.displayName);
+      if (wanted.has(uuid)) {
+        continue;
       }
+
+      const host = this.getAccessoryHost(accessory);
+      const device = host ? this.devices.get(host) : null;
+
+      if (device && !device.discovered) {
+        continue;
+      }
+
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.accessories.delete(uuid);
+      this.commandQueues.delete(uuid);
+      this.log.info('Removed accessory: %s', accessory.displayName);
     }
 
     for (const descriptor of descriptors) {
       const existing = this.accessories.get(descriptor.uuid);
 
       if (existing) {
+        existing.context.host = descriptor.host;
         existing.context.kind = descriptor.kind;
         existing.context.channel = descriptor.channel;
         existing.context.state = existing.context.state || {};
@@ -186,6 +362,7 @@ class ShellyPlusRGBWPMPlatform {
         this.api.hap.Categories.LIGHTBULB,
       );
 
+      accessory.context.host = descriptor.host;
       accessory.context.kind = descriptor.kind;
       accessory.context.channel = descriptor.channel;
       accessory.context.state = defaultState(descriptor.kind);
@@ -198,14 +375,18 @@ class ShellyPlusRGBWPMPlatform {
   }
 
   configureShellyAccessory(accessory) {
+    const host = this.getAccessoryHost(accessory);
+    const device = host ? this.devices.get(host) : null;
+    const deviceInfo = device ? device.deviceInfo : {};
+
     const information = accessory.getService(this.Service.AccessoryInformation)
       || accessory.addService(this.Service.AccessoryInformation);
 
     information
       .setCharacteristic(this.Characteristic.Manufacturer, 'Shelly')
-      .setCharacteristic(this.Characteristic.Model, this.deviceInfo.model || 'Shelly Plus RGBW PM')
-      .setCharacteristic(this.Characteristic.SerialNumber, this.deviceInfo.mac || this.host)
-      .setCharacteristic(this.Characteristic.FirmwareRevision, this.deviceInfo.ver || 'unknown');
+      .setCharacteristic(this.Characteristic.Model, deviceInfo.model || 'Shelly Plus RGBW PM')
+      .setCharacteristic(this.Characteristic.SerialNumber, deviceInfo.mac || host || 'unknown')
+      .setCharacteristic(this.Characteristic.FirmwareRevision, deviceInfo.ver || 'unknown');
 
     const lightService = accessory.getService(this.Service.Lightbulb)
       || accessory.addService(this.Service.Lightbulb);
@@ -273,11 +454,12 @@ class ShellyPlusRGBWPMPlatform {
     const targetOn = Boolean(value);
 
     await this.enqueueAccessoryCommand(accessory, async () => {
+      const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
 
       if (kind === 'light') {
-        await this.client.call('Light.Set', {
+        await device.client.call('Light.Set', {
           id: accessory.context.channel,
           on: targetOn,
         });
@@ -293,7 +475,7 @@ class ShellyPlusRGBWPMPlatform {
       }
 
       if (!targetOn) {
-        await this.client.call(profileToMethod(kind), { id: 0, on: false });
+        await device.client.call(profileToMethod(kind), { id: 0, on: false });
         state.on = false;
         this.pushStateToHomeKit(accessory, state);
         return;
@@ -305,7 +487,7 @@ class ShellyPlusRGBWPMPlatform {
 
       state.on = true;
       const params = this.buildColorSetParams(kind, state, true);
-      await this.client.call(profileToMethod(kind), params);
+      await device.client.call(profileToMethod(kind), params);
       this.pushStateToHomeKit(accessory, state);
     });
   }
@@ -314,12 +496,13 @@ class ShellyPlusRGBWPMPlatform {
     const targetBrightness = clampPercent(value);
 
     await this.enqueueAccessoryCommand(accessory, async () => {
+      const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
 
       if (kind === 'light') {
         if (targetBrightness <= 0) {
-          await this.client.call('Light.Set', {
+          await device.client.call('Light.Set', {
             id: accessory.context.channel,
             on: false,
           });
@@ -330,7 +513,7 @@ class ShellyPlusRGBWPMPlatform {
           return;
         }
 
-        await this.client.call('Light.Set', {
+        await device.client.call('Light.Set', {
           id: accessory.context.channel,
           on: true,
           brightness: targetBrightness,
@@ -343,7 +526,7 @@ class ShellyPlusRGBWPMPlatform {
       }
 
       if (targetBrightness <= 0) {
-        await this.client.call(profileToMethod(kind), { id: 0, on: false });
+        await device.client.call(profileToMethod(kind), { id: 0, on: false });
         state.on = false;
         state.brightness = 0;
         this.pushStateToHomeKit(accessory, state);
@@ -353,7 +536,7 @@ class ShellyPlusRGBWPMPlatform {
       state.on = true;
       state.brightness = targetBrightness;
       const params = this.buildColorSetParams(kind, state, true);
-      await this.client.call(profileToMethod(kind), params);
+      await device.client.call(profileToMethod(kind), params);
       this.pushStateToHomeKit(accessory, state);
     });
   }
@@ -362,6 +545,7 @@ class ShellyPlusRGBWPMPlatform {
     const targetHue = clampHue(value);
 
     await this.enqueueAccessoryCommand(accessory, async () => {
+      const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
 
@@ -372,7 +556,7 @@ class ShellyPlusRGBWPMPlatform {
       }
 
       const params = this.buildColorSetParams(kind, state, true);
-      await this.client.call(profileToMethod(kind), params);
+      await device.client.call(profileToMethod(kind), params);
       this.pushStateToHomeKit(accessory, state);
     });
   }
@@ -381,6 +565,7 @@ class ShellyPlusRGBWPMPlatform {
     const targetSaturation = clampPercent(value);
 
     await this.enqueueAccessoryCommand(accessory, async () => {
+      const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
 
@@ -391,7 +576,7 @@ class ShellyPlusRGBWPMPlatform {
       }
 
       const params = this.buildColorSetParams(kind, state, true);
-      await this.client.call(profileToMethod(kind), params);
+      await device.client.call(profileToMethod(kind), params);
       this.pushStateToHomeKit(accessory, state);
     });
   }
@@ -448,8 +633,12 @@ class ShellyPlusRGBWPMPlatform {
     return next;
   }
 
-  updateAccessoryStates(status) {
+  updateAccessoryStates(host, status) {
     for (const accessory of this.accessories.values()) {
+      if (this.getAccessoryHost(accessory) !== host) {
+        continue;
+      }
+
       const kind = accessory.context.kind;
 
       if (kind === 'light') {

@@ -6,8 +6,19 @@
   "schema": {
     "type": "object",
     "required": [
-      "name",
-      "host"
+      "name"
+    ],
+    "anyOf": [
+      {
+        "required": [
+          "devices"
+        ]
+      },
+      {
+        "required": [
+          "host"
+        ]
+      }
     ],
     "properties": {
       "name": {
@@ -15,28 +26,71 @@
         "type": "string",
         "default": "Shelly Plus RGBW PM"
       },
+      "devices": {
+        "title": "Shelly Devices",
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": [
+            "host"
+          ],
+          "properties": {
+            "name": {
+              "title": "Device Name",
+              "type": "string",
+              "default": "Shelly Plus RGBW PM"
+            },
+            "host": {
+              "title": "IP Address or mDNS Name",
+              "type": "string",
+              "placeholder": "192.168.1.60 or shellyplusrgbwpm.local"
+            },
+            "showDimmer1": {
+              "title": "Show Dimmer 1",
+              "type": "boolean",
+              "default": true
+            },
+            "showDimmer2": {
+              "title": "Show Dimmer 2",
+              "type": "boolean",
+              "default": true
+            },
+            "showDimmer3": {
+              "title": "Show Dimmer 3",
+              "type": "boolean",
+              "default": true
+            },
+            "showDimmer4": {
+              "title": "Show Dimmer 4",
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      },
       "host": {
-        "title": "IP Address or mDNS Name",
+        "title": "Legacy: Single Device Host",
         "type": "string",
         "placeholder": "192.168.1.60 or shellyplusrgbwpm.local"
       },
       "showDimmer1": {
-        "title": "Show Dimmer 1",
+        "title": "Legacy: Show Dimmer 1",
         "type": "boolean",
         "default": true
       },
       "showDimmer2": {
-        "title": "Show Dimmer 2",
+        "title": "Legacy: Show Dimmer 2",
         "type": "boolean",
         "default": true
       },
       "showDimmer3": {
-        "title": "Show Dimmer 3",
+        "title": "Legacy: Show Dimmer 3",
         "type": "boolean",
         "default": true
       },
       "showDimmer4": {
-        "title": "Show Dimmer 4",
+        "title": "Legacy: Show Dimmer 4",
         "type": "boolean",
         "default": true
       }
@@ -44,17 +98,18 @@
   },
   "form": [
     "name",
-    "host",
+    "devices",
     {
       "type": "help",
-      "helpvalue": "The dimmer checkboxes are only used when the Shelly profile is light mode (4 dimmers)."
+      "helpvalue": "Use the Shelly Devices list to add one or more devices. The legacy single-device fields below are optional for older configs."
     },
     {
       "type": "fieldset",
-      "title": "Light Mode Dimmers",
+      "title": "Legacy Single-Device Fields",
       "expandable": true,
       "expanded": false,
       "items": [
+        "host",
         "showDimmer1",
         "showDimmer2",
         "showDimmer3",

@@ -25,15 +25,17 @@ npm install -g homebridge-shelly-plus-rgbw-pm
 
 In Homebridge Config UI X, add platform **Shelly Plus RGBW PM** and set:
 
-- **IP Address or mDNS Name** (required)
 - **Display Name** (required)
+- **Shelly Devices** (required): add one entry per Shelly Plus RGBW PM device
 
-Optional (used only when the Shelly profile is `light`):
+Per device options (used only when that Shelly profile is `light`):
 
 - **Show Dimmer 1**
 - **Show Dimmer 2**
 - **Show Dimmer 3**
 - **Show Dimmer 4**
+
+Legacy single-device fields (`host`, `showDimmer1..4`) are still supported for older configs.
 
 ## Example config.json
 
@@ -42,12 +44,25 @@ Optional (used only when the Shelly profile is `light`):
   "platforms": [
     {
       "platform": "ShellyPlusRGBWPM",
-      "name": "Kitchen Lights",
-      "host": "shellyplusrgbwpm.local",
-      "showDimmer1": true,
-      "showDimmer2": true,
-      "showDimmer3": false,
-      "showDimmer4": false
+      "name": "Shelly Plus RGBW PM",
+      "devices": [
+        {
+          "name": "Kitchen Lights",
+          "host": "shellyplusrgbwpm-kitchen.local",
+          "showDimmer1": true,
+          "showDimmer2": true,
+          "showDimmer3": false,
+          "showDimmer4": false
+        },
+        {
+          "name": "Patio Lights",
+          "host": "shellyplusrgbwpm-patio.local",
+          "showDimmer1": true,
+          "showDimmer2": true,
+          "showDimmer3": true,
+          "showDimmer4": true
+        }
+      ]
     }
   ]
 }
