@@ -35,7 +35,7 @@
               "title": "IP Address or mDNS Name",
               "type": "string",
               "placeholder": "192.168.1.60 or shellyplusrgbwpm.local",
-              "description": "mDNS name is persistent in DHCP IP address environment. Find it for your device at http://<device ip-address>/shelly as value of \"id\". Add \".local\" to that ID to get the hostname."
+              "description": "mDNS name is persistent in DHCP IP address environment. Find it for your device at http://&lt;device ip-address&gt;/shelly as value of \"id\". Add \".local\" to this ID to get the hostname."
             },
             "showDimmer1": {
               "title": "Show Dimmer 1",
