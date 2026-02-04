@@ -40,17 +40,17 @@
             "showDimmer1": {
               "title": "Show Dimmer 1",
               "type": "boolean",
-              "default": true,
+              "default": true
             },
             "showDimmer2": {
               "title": "Show Dimmer 2",
               "type": "boolean",
-              "default": true,
+              "default": true
             },
             "showDimmer3": {
               "title": "Show Dimmer 3",
               "type": "boolean",
-              "default": true,
+              "default": trues
             },
             "showDimmer4": {
               "title": "Show Dimmer 4",
