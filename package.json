@@ -1,0 +1,18 @@
+{
+  "name": "homebridge-shelly-plus-rgbw-pm",
+  "version": "1.0.0",
+  "description": "Homebridge plugin for Shelly Plus RGBW PM (light, RGB, and RGBW profiles)",
+  "main": "index.js",
+  "keywords": [
+    "homebridge-plugin",
+    "homebridge",
+    "shelly",
+    "rgbw"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "homebridge": ">=1.8.0",
+    "node": ">=18.0.0"
+  }
+}

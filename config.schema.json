@@ -1,0 +1,65 @@
+{
+  "pluginAlias": "ShellyPlusRGBWPM",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Shelly Plus RGBW PM",
+  "schema": {
+    "type": "object",
+    "required": [
+      "name",
+      "host"
+    ],
+    "properties": {
+      "name": {
+        "title": "Display Name",
+        "type": "string",
+        "default": "Shelly Plus RGBW PM"
+      },
+      "host": {
+        "title": "IP Address or mDNS Name",
+        "type": "string",
+        "placeholder": "192.168.1.60 or shellyplusrgbwpm.local"
+      },
+      "showDimmer1": {
+        "title": "Show Dimmer 1",
+        "type": "boolean",
+        "default": true
+      },
+      "showDimmer2": {
+        "title": "Show Dimmer 2",
+        "type": "boolean",
+        "default": true
+      },
+      "showDimmer3": {
+        "title": "Show Dimmer 3",
+        "type": "boolean",
+        "default": true
+      },
+      "showDimmer4": {
+        "title": "Show Dimmer 4",
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  "form": [
+    "name",
+    "host",
+    {
+      "type": "help",
+      "helpvalue": "The dimmer checkboxes are only used when the Shelly profile is light mode (4 dimmers)."
+    },
+    {
+      "type": "fieldset",
+      "title": "Light Mode Dimmers",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "showDimmer1",
+        "showDimmer2",
+        "showDimmer3",
+        "showDimmer4"
+      ]
+    }
+  ]
+}
