@@ -6,19 +6,8 @@
   "schema": {
     "type": "object",
     "required": [
-      "name"
-    ],
-    "anyOf": [
-      {
-        "required": [
-          "devices"
-        ]
-      },
-      {
-        "required": [
-          "host"
-        ]
-      }
+      "name",
+      "devices"
     ],
     "properties": {
       "name": {
@@ -68,31 +57,6 @@
             }
           }
         }
-      },
-      "host": {
-        "title": "Legacy: Single Device Host",
-        "type": "string",
-        "placeholder": "192.168.1.60 or shellyplusrgbwpm.local"
-      },
-      "showDimmer1": {
-        "title": "Legacy: Show Dimmer 1",
-        "type": "boolean",
-        "default": true
-      },
-      "showDimmer2": {
-        "title": "Legacy: Show Dimmer 2",
-        "type": "boolean",
-        "default": true
-      },
-      "showDimmer3": {
-        "title": "Legacy: Show Dimmer 3",
-        "type": "boolean",
-        "default": true
-      },
-      "showDimmer4": {
-        "title": "Legacy: Show Dimmer 4",
-        "type": "boolean",
-        "default": true
       }
     }
   },
@@ -101,20 +65,7 @@
     "devices",
     {
       "type": "help",
-      "helpvalue": "Use the Shelly Devices list to add one or more devices. The legacy single-device fields below are optional for older configs."
-    },
-    {
-      "type": "fieldset",
-      "title": "Legacy Single-Device Fields",
-      "expandable": true,
-      "expanded": false,
-      "items": [
-        "host",
-        "showDimmer1",
-        "showDimmer2",
-        "showDimmer3",
-        "showDimmer4"
-      ]
+      "helpvalue": "Add one or more devices. Dimmer checkboxes apply only when that device is in light profile."
     }
   ]
 }

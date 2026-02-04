@@ -35,8 +35,6 @@ Per device options (used only when that Shelly profile is `light`):
 - **Show Dimmer 3**
 - **Show Dimmer 4**
 
-Legacy single-device fields (`host`, `showDimmer1..4`) are still supported for older configs.
-
 ## Example config.json
 
 ```json

@@ -26,7 +26,7 @@ class ShellyPlusRGBWPMPlatform {
     this.devices = this.parseConfiguredDevices();
 
     if (!this.devices.size) {
-      this.log.error('No Shelly devices configured. Set "host" or add entries under "devices".');
+      this.log.error('No Shelly devices configured. Add one or more entries under "devices".');
       return;
     }
 
@@ -53,13 +53,6 @@ class ShellyPlusRGBWPMPlatform {
       });
     });
 
-    if (this.config.host) {
-      this.addConfiguredDevice(devices, this.config, {
-        fallbackName: this.platformName,
-        label: 'host',
-      });
-    }
-
     return devices;
   }
 
@@ -67,7 +60,7 @@ class ShellyPlusRGBWPMPlatform {
     const host = sanitizeHost(config ? config.host : '');
 
     if (!host) {
-      if (options && options.label !== 'host') {
+      if (options && options.label) {
         this.log.warn('Ignoring %s because host is missing.', options.label);
       }
 
