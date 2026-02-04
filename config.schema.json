@@ -20,6 +20,7 @@
         "type": "array",
         "minItems": 1,
         "items": {
+          "title": "Shelly Device",
           "type": "object",
           "required": [
             "host"
@@ -62,10 +63,33 @@
   },
   "form": [
     "name",
-    "devices",
+    {
+      "key": "devices",
+      "type": "array",
+      "items": [
+        "devices[].name",
+        "devices[].host",
+        {
+          "type": "help",
+          "helpvalue": "Dimmer checkboxes apply only when that device is in light profile."
+        },
+        {
+          "type": "fieldset",
+          "title": "Light Mode Dimmers",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "devices[].showDimmer1",
+            "devices[].showDimmer2",
+            "devices[].showDimmer3",
+            "devices[].showDimmer4"
+          ]
+        }
+      ]
+    },
     {
       "type": "help",
-      "helpvalue": "Add one or more devices. Dimmer checkboxes apply only when that device is in light profile."
+      "helpvalue": "Add one or more Shelly devices."
     }
   ]
 }
