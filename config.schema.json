@@ -18,7 +18,7 @@
       "devices": {
         "title": "Shelly Devices",
         "type": "array",
-        "minItems": 1,
+        "description": "Add one or more Shelly Plus RGBW PM devices.",
         "items": {
           "title": "Shelly Device",
           "type": "object",
@@ -60,40 +60,5 @@
         }
       }
     }
-  },
-  "form": [
-    "name",
-    {
-      "key": "devices",
-      "type": "array",
-      "add": "Add Device",
-      "items": {
-        "type": "section",
-        "items": [
-          "devices[].name",
-          "devices[].host",
-          {
-            "type": "help",
-            "helpvalue": "Dimmer checkboxes apply only when that device is in light profile."
-          },
-          {
-            "type": "fieldset",
-            "title": "Light Mode Dimmers",
-            "expandable": true,
-            "expanded": false,
-            "items": [
-              "devices[].showDimmer1",
-              "devices[].showDimmer2",
-              "devices[].showDimmer3",
-              "devices[].showDimmer4"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "type": "help",
-      "helpvalue": "Add one or more Shelly devices."
-    }
-  ]
+  }
 }
