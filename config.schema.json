@@ -36,7 +36,7 @@
             "host": {
               "title": "IP Address or mDNS Name",
               "type": "string",
-              "placeholder": "192.168.1.60 or shellyplusrgbwpm.local",
+              "placeholder": "192.168.1.60 or shellyplusrgbwpm-xxxxxxxxxxxx.local",
               "description": "The mDNS name is persistent, even in a DHCP-based IP environment. You can find the device&rsquo;s ID at http://&lt;device-ip-address&gt;/shelly (field &quot;id&quot;). Append .local to this ID to obtain the mDNS hostname."
             },
             "showDimmer1": {

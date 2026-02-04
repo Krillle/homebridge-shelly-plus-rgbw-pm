@@ -31,7 +31,7 @@ In Homebridge Config UI X, add platform **Shelly Plus RGBW PM** and set:
 Per device options:
 
 - **Device Name**: name you want to see for this device in Homebridge.
-- **IP Address or mDNS Name**: the mDNS name is persistent even in a DHCP-based IP environment. You can find the device ID at `http://<device-ip-address>/shelly` (field `id`). Append `.local` to that ID to obtain the mDNS hostname.
+- **IP Address or mDNS Name**: the mDNS name is persistent even in a DHCP-based IP environment. You can find the device ID at `http://<device-ip-address>/shelly` (field `id`). Append `.local` to that ID to obtain the mDNS hostname like shellyplusrgbwpm-xxxxxxxxxxxx.local.
 - **Show Dimmer O1** / **O2** / **O3** / **O4**: for Shelly Plus RGBW PM devices in light mode, select the dimmers you want to see as devices in Homebridge. If the device is in RGBW or RGB mode, these checkboxes are ignored.
 
 ## Example config.json
