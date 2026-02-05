@@ -70,3 +70,11 @@ Per device options:
 - The plugin polls the device every 5 seconds.
 - If the Shelly profile changes (for example `light` to `rgbw`), the plugin rebuilds accessories automatically.
 - RGBW white output is mapped to HomeKit by using low saturation (`Saturation = 0`) as white mode.
+
+## Changelog
+
+### v1.0.1 (2026/02/05)
+- fix: Unhandled error thrown inside write handler cought
+
+### v1.0.0 (2026/02/05)
+- initial working version 

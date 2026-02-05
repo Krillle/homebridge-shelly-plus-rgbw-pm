@@ -446,7 +446,7 @@ class ShellyPlusRGBWPMPlatform {
   async setOn(accessory, value) {
     const targetOn = Boolean(value);
 
-    await this.enqueueAccessoryCommand(accessory, async () => {
+    await this.runAccessoryWrite(accessory, 'On', async () => {
       const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
@@ -488,7 +488,7 @@ class ShellyPlusRGBWPMPlatform {
   async setBrightness(accessory, value) {
     const targetBrightness = clampPercent(value);
 
-    await this.enqueueAccessoryCommand(accessory, async () => {
+    await this.runAccessoryWrite(accessory, 'Brightness', async () => {
       const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
@@ -537,7 +537,7 @@ class ShellyPlusRGBWPMPlatform {
   async setHue(accessory, value) {
     const targetHue = clampHue(value);
 
-    await this.enqueueAccessoryCommand(accessory, async () => {
+    await this.runAccessoryWrite(accessory, 'Hue', async () => {
       const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
@@ -557,7 +557,7 @@ class ShellyPlusRGBWPMPlatform {
   async setSaturation(accessory, value) {
     const targetSaturation = clampPercent(value);
 
-    await this.enqueueAccessoryCommand(accessory, async () => {
+    await this.runAccessoryWrite(accessory, 'Saturation', async () => {
       const device = this.getAccessoryDevice(accessory);
       const kind = accessory.context.kind;
       const state = this.getState(accessory);
@@ -624,6 +624,23 @@ class ShellyPlusRGBWPMPlatform {
 
     this.commandQueues.set(key, next);
     return next;
+  }
+
+  async runAccessoryWrite(accessory, action, task) {
+    try {
+      await this.enqueueAccessoryCommand(accessory, task);
+    } catch (error) {
+      this.log.warn('Failed to set %s for %s: %s', action, accessory.displayName, error.message);
+      throw this.toHapStatusError(error);
+    }
+  }
+
+  toHapStatusError(error) {
+    if (error && error instanceof this.api.hap.HapStatusError) {
+      return error;
+    }
+
+    return new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
   }
 
   updateAccessoryStates(host, status) {
